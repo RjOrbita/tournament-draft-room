@@ -365,7 +365,8 @@ function renderBidStage() {
         <div class="nominated-player-card">
           <div class="np-name">${escHtml(player.name || 'Unknown')}</div>
           ${player.position ? `<div class="np-pos">${escHtml(player.position)}</div>` : ''}
-          ${player.info     ? `<div class="np-info">${escHtml(player.info)}</div>`     : ''}
+          ${player.position ? `<div class="np-pos">${escHtml(player.position)}</div>' : ''}
+          ${player.info     ? `<div class="np-info">${escHtml(player.info)}</div>'     : ''}
         </div>
         <div class="badge badge-success" style="font-size:.85rem;padding:8px 16px;">✓ Your bid is locked in</div>
         ${timerHtml}
@@ -375,11 +376,16 @@ function renderBidStage() {
     } else if (amICaptain) {
       // Show bid input for non-nominator captains
       const myPoints = participants[myId]?.points ?? 0;
+      const myTeam   = participants[myId]?.team ?? [];
+      const maxTeam  = roomMeta?.maxTeamSize ?? 5;
+      const needed   = maxTeam - myTeam.length;
+      const maxBid   = needed > 0 ? myPoints - (needed - 1) : 0;
+
       stage.innerHTML = `
         <div class="nominated-player-card">
           <div class="np-name">${escHtml(player.name || 'Unknown')}</div>
-          ${player.position ? `<div class="np-pos">${escHtml(player.position)}</div>` : ''}
-          ${player.info     ? `<div class="np-info">${escHtml(player.info)}</div>`     : ''}
+          ${player.position ? `<div class="np-pos">${escHtml(player.position)}</div>' : ''}
+          ${player.info     ? `<div class="np-info">${escHtml(player.info)}</div>'     : ''}
         </div>
         ${timerHtml}
         <div style="width:100%;max-width:320px;">
@@ -387,27 +393,27 @@ function renderBidStage() {
           <div class="bid-input-group mb-3">
             <div class="bid-input-prefix">⭐</div>
             <input class="bid-input-field" type="number" id="inline-bid-input"
-              min="1" max="${myPoints}" placeholder="Min 1 pt"
-              ${myPoints <= 0 ? 'disabled' : ''} />
+              min="1" max="${maxBid}" placeholder="Max ${maxBid} pts"
+              ${maxBid <= 0 ? 'disabled' : ''} />
           </div>
           <div class="flex gap-3">
-            <button class="btn btn-gold w-full" id="inline-bid-submit" ${myPoints <= 0 ? 'disabled' : ''}>
+            <button class="btn btn-gold w-full" id="inline-bid-submit" ${maxBid <= 0 ? 'disabled' : ''}>
               🔒 Lock In Bid
             </button>
             <button class="btn btn-ghost" id="inline-bid-pass" style="flex-shrink:0;">Pass</button>
           </div>
-          ${myPoints <= 0 ? `<p class="text-danger text-xs text-center mt-2">You have no points left — you must pass.</p>` : ''}
+          ${maxBid <= 0 ? `<p class="text-danger text-xs text-center mt-2">You don't have enough points to bid — you must pass.</p>` : ''}
         </div>
         <div class="bid-statuses">${bidChips}</div>
       `;
-      setupInlineBidListeners(activeBid.playerId, myPoints);
+      setupInlineBidListeners(activeBid.playerId, maxBid);
     } else {
       // Spectator / admin view
       stage.innerHTML = `
         <div class="nominated-player-card">
           <div class="np-name">${escHtml(player.name || 'Unknown')}</div>
-          ${player.position ? `<div class="np-pos">${escHtml(player.position)}</div>` : ''}
-          ${player.info     ? `<div class="np-info">${escHtml(player.info)}</div>`     : ''}
+          ${player.position ? `<div class="np-pos">${escHtml(player.position)}</div>' : ''}
+          ${player.info     ? `<div class="np-info">${escHtml(player.info)}</div>'     : ''}
         </div>
         ${timerHtml}
         <div class="text-muted text-sm">Captains are placing their blind bids…</div>
@@ -493,15 +499,15 @@ function showPausedState() {
 }
 
 // ---- Inline bid listeners (for bidding phase) ----
-function setupInlineBidListeners(playerId, maxPoints) {
+function setupInlineBidListeners(playerId, maxBid) {
   const submitBtn = document.getElementById('inline-bid-submit');
   const passBtn   = document.getElementById('inline-bid-pass');
   const input     = document.getElementById('inline-bid-input');
 
-  if (submitBtn) submitBtn.addEventListener('click', () => doSubmitBid(playerId, maxPoints));
+  if (submitBtn) submitBtn.addEventListener('click', () => doSubmitBid(playerId, maxBid));
   if (passBtn)   passBtn.addEventListener('click', () => doPassBid());
   if (input)     input.addEventListener('keypress', e => {
-    if (e.key === 'Enter') doSubmitBid(playerId, maxPoints);
+    if (e.key === 'Enter') doSubmitBid(playerId, maxBid);
   });
 }
 
@@ -541,8 +547,8 @@ function renderPoolGrid() {
       <div class="player-card ${isDrafted ? 'drafted' : ''} ${isBidding ? 'bidding' : ''} ${clickable ? 'fade-in' : ''}"
            id="pc-${pid}" data-pid="${pid}" ${clickable ? 'tabindex="0" role="button"' : ''}>
         <div class="pcard-name">${escHtml(p.name)}</div>
-        ${p.position ? `<div class="pcard-pos">${escHtml(p.position)}</div>` : ''}
-        ${p.info     ? `<div class="pcard-info">${escHtml(p.info)}</div>`     : ''}
+        ${p.position ? `<div class="pcard-pos">${escHtml(p.position)}</div>' : ''}
+        ${p.info     ? `<div class="pcard-info">${escHtml(p.info)}</div>'     : ''}
         ${isDrafted  ? '' : ''}
       </div>
     `;
@@ -612,7 +618,7 @@ function renderCaptainsSidebar() {
             <div class="truncate font-semibold text-sm">${escHtml(c.name || 'Captain')}
               ${isMe ? '<span class="badge badge-gold" style="font-size:.6rem;margin-left:4px;">You</span>' : ''}
             </div>
-            ${isActive ? `<div class="badge badge-primary" style="font-size:.62rem;margin-top:2px;">🎯 Active</div>` : ''}
+            ${isActive ? `<div class="badge badge-primary" style="font-size:.62rem;margin-top:2px;">🎯 Active</div>' : ''}
           </div>
           <div class="points-chip" style="font-size:.85rem;padding:4px 10px;">
             <span>⭐</span><span>${pts}</span>
@@ -673,18 +679,22 @@ function updatePhaseBanner() {
 // ============================================================
 //  BID MODAL (for nominating captain picking from pool)
 // ============================================================
-function openBidModal(playerId) {
-  const player   = playerPool[playerId];
-  if (!player) return;
+function openBidModal(pid) {
+  const player = playerPool[pid];
+  if (!player || player.status !== 'available') return;
   const myPoints = participants[myId]?.points ?? 0;
+  const myTeam   = participants[myId]?.team ?? [];
+  const maxTeam  = roomMeta?.maxTeamSize ?? 5;
+  const needed   = maxTeam - myTeam.length;
+  const maxBid   = needed > 0 ? myPoints - (needed - 1) : 0;
 
-  pendingBidPlayerId = playerId;
+  pendingBidPlayerId = pid;
 
   document.getElementById('bid-confirm-player-name').textContent = player.name;
   document.getElementById('bid-confirm-player-pos').textContent  = player.position || '';
-  document.getElementById('bid-amount-input').value   = '';
-  document.getElementById('bid-amount-input').max     = myPoints;
-  document.getElementById('bid-max-display').textContent     = myPoints;
+  document.getElementById('bid-amount-input').value   = '1';
+  document.getElementById('bid-amount-input').max     = maxBid;
+  document.getElementById('bid-max-display').textContent     = maxBid;
   document.getElementById('bid-balance-display').textContent  = myPoints;
   document.getElementById('bid-confirm-warning').classList.add('hidden');
 
@@ -698,10 +708,15 @@ function openBidModal(playerId) {
 function bidInputHandler() {
   const input    = document.getElementById('bid-amount-input');
   const myPoints = participants[myId]?.points ?? 0;
+  const myTeam   = participants[myId]?.team ?? [];
+  const maxTeam  = roomMeta?.maxTeamSize ?? 5;
+  const needed   = maxTeam - myTeam.length;
+  const maxBid   = needed > 0 ? myPoints - (needed - 1) : 0;
+  
   const val      = parseInt(input.value);
   const warn     = document.getElementById('bid-confirm-warning');
-  if (val > myPoints) {
-    warn.textContent = `⚠️ You only have ${myPoints} points.`;
+  if (val > maxBid) {
+    warn.textContent = `⚠️ You must save points for remaining slots. Max: ${maxBid}`;
     warn.classList.remove('hidden');
   } else {
     warn.classList.add('hidden');
@@ -713,9 +728,13 @@ async function handleBidSubmit() {
   if (!playerId) return;
   const amount   = parseInt(document.getElementById('bid-amount-input').value);
   const myPoints = participants[myId]?.points ?? 0;
+  const myTeam   = participants[myId]?.team ?? [];
+  const maxTeam  = roomMeta?.maxTeamSize ?? 5;
+  const needed   = maxTeam - myTeam.length;
+  const maxBid   = needed > 0 ? myPoints - (needed - 1) : 0;
 
   if (!amount || amount < 1) { showToast('Bid must be at least 1 point.', 'error'); return; }
-  if (amount > myPoints)     { showToast(`You only have ${myPoints} points.`, 'error'); return; }
+  if (amount > maxBid)       { showToast(`You must save points for remaining slots. Max bid: ${maxBid}`, 'error'); return; }
 
   const btn = document.getElementById('submit-bid-confirm');
   btn.disabled = true;
@@ -773,13 +792,13 @@ async function nominateAndBid(playerId, bidAmount) {
 }
 
 // Called by OTHER captains during bidding phase
-async function doSubmitBid(playerId, maxPoints) {
+async function doSubmitBid(playerId, maxBid) {
   const input = document.getElementById('inline-bid-input');
   if (!input) return;
   const amount = parseInt(input.value);
 
   if (!amount || amount < 1)    { showToast('Bid must be at least 1 point.', 'error'); return; }
-  if (amount > maxPoints)       { showToast(`You only have ${maxPoints} points.`, 'error'); return; }
+  if (amount > maxBid)          { showToast(`You must save points for remaining slots. Max bid: ${maxBid}`, 'error'); return; }
 
   const btn = document.getElementById('inline-bid-submit');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Locking…'; }
