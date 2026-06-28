@@ -135,9 +135,11 @@ function listenToDraftState() {
     // Handle phase changes
     renderBidStage();
     updatePhaseBanner();
+    renderCaptainsSidebar();
+    renderPoolGrid();
 
     // Timer management
-    if (draftState.phase === 'bidding') {
+    if (draftState.phase === 'bidding' || draftState.phase === 'pick') {
       if (!draftState.timerPaused) {
         startLocalTimer();
       } else {
@@ -158,24 +160,30 @@ function listenToDraftState() {
 function listenToPresence() {
   db.ref(`rooms/${roomId}/presence`).on('value', snap => {
     const online = snap.val() || {};
-    if (!draftState || draftState.phase !== 'bidding' || isResolving) return;
+    if (!draftState || isResolving) return;
+    if (draftState.phase !== 'bidding' && draftState.phase !== 'pick') return;
 
     const turnOrder = draftState.turnOrder || [];
-    const bids = draftState.activeBid?.bids || {};
+    let needsAction = [];
+    
+    if (draftState.phase === 'bidding') {
+      const bids = draftState.activeBid?.bids || {};
+      needsAction = turnOrder.filter(uid => {
+        const bid = bids[uid];
+        return uid !== draftState.activeBid?.nominatedBy &&
+               (!bid || (!bid.submitted && !bid.passed));
+      });
+    } else if (draftState.phase === 'pick') {
+      needsAction = [turnOrder[draftState.currentCaptainIndex]];
+    }
 
-    // Find captains who haven't bid/passed and are offline
-    const needsBid = turnOrder.filter(uid => {
-      const bid = bids[uid];
-      return uid !== draftState.activeBid?.nominatedBy &&
-             (!bid || (!bid.submitted && !bid.passed));
-    });
-    const offlineNeedsBid = needsBid.filter(uid => !online[uid]);
+    const offlineNeedsAction = needsAction.filter(uid => !online[uid]);
 
     // Only admin (or first connected user) manages pause state
     if (myRole === 'admin' || myId === turnOrder[0]) {
-      if (offlineNeedsBid.length > 0 && !draftState.timerPaused) {
-        pauseTimer(offlineNeedsBid[0]);
-      } else if (offlineNeedsBid.length === 0 && draftState.timerPaused) {
+      if (offlineNeedsAction.length > 0 && !draftState.timerPaused) {
+        pauseTimer(offlineNeedsAction[0]);
+      } else if (offlineNeedsAction.length === 0 && draftState.timerPaused) {
         resumeTimer();
       }
     }
@@ -207,8 +215,9 @@ function tickTimer() {
   const remaining = Math.max(0, draftState.timerEndsAt - Date.now());
   const secs = Math.ceil(remaining / 1000);
 
-  // Update timer in bid stage
-  updateTimerDisplay(secs, Math.ceil(roomMeta.bidTimerSeconds));
+  // Update timer display
+  const totalSecs = draftState.phase === 'pick' ? 30 : Math.ceil(roomMeta.bidTimerSeconds);
+  updateTimerDisplay(secs, totalSecs);
 
   if (remaining <= 0) {
     stopLocalTimer();
@@ -218,12 +227,22 @@ function tickTimer() {
 
 async function handleTimerExpiry() {
   if (isResolving) return;
-  // Use transaction to safely advance phase from bidding → reveal
+  // Use transaction to safely advance phases when timer runs out
   try {
     await db.ref(`rooms/${roomId}/draft`).transaction(draft => {
-      if (!draft || draft.phase !== 'bidding') return; // abort
-      draft.phase = 'reveal';
-      return draft;
+      if (!draft) return;
+      if (draft.phase === 'bidding') {
+        draft.phase = 'reveal';
+        return draft;
+      }
+      if (draft.phase === 'pick') {
+        // Auto-skip turn if they don't pick
+        const nextIdx = (draft.currentCaptainIndex + 1) % draft.turnOrder.length;
+        draft.currentCaptainIndex = nextIdx;
+        draft.timerEndsAt = Date.now() + 30000;
+        if (nextIdx === 0) draft.round = (draft.round || 1) + 1;
+        return draft;
+      }
     });
   } catch(e) { /* another client handled it */ }
 }
@@ -270,19 +289,22 @@ function renderBidStage() {
 
   // ---- PICK phase ----
   if (phase === 'pick') {
+    const timerHtml = buildTimerHtml();
     if (amIActiveCaptain) {
       stage.innerHTML = `
-        <div class="your-turn-banner" style="width:100%;max-width:380px;">
+        <div class="your-turn-banner" style="width:100%;max-width:380px;margin-bottom:var(--s4);">
           <div style="font-size:1.5rem;margin-bottom:var(--s2);">🎯 Your Turn!</div>
           <div class="text-sm text-muted">Select a player from the pool to nominate them for bidding.</div>
         </div>
-        <div class="text-muted text-sm">Click any <span class="badge badge-primary">available</span> player in the pool to pick them.</div>
+        ${timerHtml}
+        <div class="text-muted text-sm mt-4">Click any <span class="badge badge-primary">available</span> player in the pool to pick them.</div>
       `;
     } else {
       stage.innerHTML = `
         <div style="font-size:2.5rem;margin-bottom:var(--s4);">⏳</div>
         <div style="font-size:1.1rem;font-weight:600;">${escHtml(activeCaptain.name || 'Captain')}</div>
-        <div class="text-muted text-sm mt-2">is picking a player…</div>
+        <div class="text-muted text-sm mt-2 mb-4">is picking a player…</div>
+        ${timerHtml}
         <div class="phase-banner pick mt-4">🎯 Pick Phase</div>
       `;
     }
@@ -403,7 +425,7 @@ function renderBidStage() {
 
 function buildTimerHtml() {
   if (!draftState?.timerEndsAt && !draftState?.timerPaused) return '';
-  const total   = (roomMeta?.bidTimerSeconds || 60) * 1000;
+  const total   = (draftState.phase === 'pick' ? 30 : (roomMeta?.bidTimerSeconds || 60)) * 1000;
   let remaining = draftState.timerPaused
     ? (draftState.timeRemainingMs || 0)
     : Math.max(0, draftState.timerEndsAt - Date.now());
@@ -944,7 +966,7 @@ async function resolveRound(winnerId, winAmount, playerId) {
       updates[`rooms/${roomId}/draft/phase`]               = 'pick';
       updates[`rooms/${roomId}/draft/currentCaptainIndex`] = nextIdx;
       updates[`rooms/${roomId}/draft/activeBid`]           = null;
-      updates[`rooms/${roomId}/draft/timerEndsAt`]         = null;
+      updates[`rooms/${roomId}/draft/timerEndsAt`]         = firebase.database.ServerValue.TIMESTAMP + 30000;
       updates[`rooms/${roomId}/draft/timerPaused`]         = false;
       updates[`rooms/${roomId}/draft/timeRemainingMs`]     = null;
       updates[`rooms/${roomId}/draft/pausedBecause`]       = null;
