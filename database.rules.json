@@ -27,8 +27,8 @@
         },
 
         "playerPool": {
-          // Only admin can create/modify player pool
-          ".write": "auth != null && root.child('rooms').child($roomId).child('meta/adminId').val() === auth.uid"
+          // Allow captains to update player status during the draft
+          ".write": "auth != null"
         },
 
         "draft": {

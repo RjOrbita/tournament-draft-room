@@ -979,7 +979,7 @@ async function resolveRound(winnerId, winAmount, playerId) {
       updates[`rooms/${roomId}/draft/phase`]               = 'pick';
       updates[`rooms/${roomId}/draft/currentCaptainIndex`] = nextIdx;
       updates[`rooms/${roomId}/draft/activeBid`]           = null;
-      updates[`rooms/${roomId}/draft/timerEndsAt`]         = firebase.database.ServerValue.TIMESTAMP + 30000;
+      updates[`rooms/${roomId}/draft/timerEndsAt`]         = Date.now() + 30000;
       updates[`rooms/${roomId}/draft/timerPaused`]         = false;
       updates[`rooms/${roomId}/draft/timeRemainingMs`]     = null;
       updates[`rooms/${roomId}/draft/pausedBecause`]       = null;

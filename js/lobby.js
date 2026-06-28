@@ -360,7 +360,7 @@ async function startDraft() {
       currentCaptainIndex: 0,
       turnOrder,
       round: 1,
-      timerEndsAt: firebase.database.ServerValue.TIMESTAMP + 30000,
+      timerEndsAt: Date.now() + 30000,
       timerPaused: false,
       timeRemainingMs: null,
       pausedBecause: null,
