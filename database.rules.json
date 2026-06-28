@@ -1,16 +1,17 @@
 {
   "rules": {
     "rooms": {
+      // Allow authenticated users to read the rooms node (required for the invite code query to work)
+      ".read": "auth != null",
+      ".indexOn": ["meta/inviteCode"],
+
       "$roomId": {
-        // Any authenticated user can read room data
-        ".read": "auth != null",
+        // Allow the initial room creation (when data doesn't exist) if the user sets themselves as admin
+        ".write": "auth != null && !data.exists() && newData.child('meta/adminId').val() === auth.uid",
 
         "meta": {
-          // Only admin can write meta (creation + status updates)
-          ".write": "auth != null && (
-            !data.exists() ||
-            data.child('adminId').val() === auth.uid
-          )"
+          // Admin can update meta
+          ".write": "auth != null && data.child('adminId').val() === auth.uid"
         },
 
         "participants": {
