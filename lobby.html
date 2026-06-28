@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lobby — Tournament Draft Room</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .lobby-wrap { padding: var(--s8) 0; position: relative; z-index: 1; }
+    .lobby-grid { display: grid; grid-template-columns: 1fr 340px; gap: var(--s6); align-items: start; }
+    .captain-slots-list { display: flex; flex-direction: column; gap: var(--s2); }
+    .captain-slot {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--s3) var(--s4); background: var(--bg-2);
+      border-radius: var(--r-md); border: 1px solid var(--border-dim);
+      min-height: 52px;
+    }
+    .captain-slot.assigned { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.05); }
+    .captain-slot .slot-num { font-family:'Rajdhani',sans-serif; font-size:1.1rem; font-weight:700; color:var(--text-4); min-width:24px; }
+    .captain-slot.assigned .slot-num { color: var(--gold-light); }
+    .slot-info { flex:1; margin-left:var(--s3); }
+    .slot-name  { font-weight:600; font-size:.9rem; }
+    .slot-label { font-size:.72rem; color:var(--text-3); }
+    .turn-order-list { display:flex; flex-direction:column; gap:var(--s2); }
+    .turn-item { display:flex; align-items:center; gap:var(--s3); padding:var(--s2) var(--s3); background:var(--bg-2); border-radius:var(--r-sm); cursor:grab; }
+    .turn-item:active { cursor:grabbing; }
+    .turn-drag-icon { color:var(--text-4); font-size:1.1rem; }
+    .participants-list { display:flex; flex-direction:column; gap:var(--s2); }
+    .participant-item { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4); background:var(--bg-2); border-radius:var(--r-md); border:1px solid var(--border-dim); }
+    @media(max-width:900px){ .lobby-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <div class="bg-grid"></div>
+  <div id="conn-banner"></div>
+  <div id="toast-container"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <div class="logo"><div class="logo-mark">🏆</div><span id="nav-room-name">Draft Room</span></div>
+      <div class="nav-info">
+        <div class="invite-code-block" style="padding:var(--s2) var(--s4);">
+          <span class="text-muted text-xs font-bold" style="letter-spacing:.06em;text-transform:uppercase;">Code</span>
+          <span class="invite-code-value" id="nav-invite-code" style="font-size:1.4rem;">——</span>
+          <button class="btn btn-ghost btn-icon-sm" id="btn-copy-code" title="Copy invite code">📋</button>
+        </div>
+        <span id="nav-my-badge" class="badge badge-neutral"></span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="lobby-wrap">
+    <div class="container-md">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 id="lobby-room-title" style="font-size:2rem;">Waiting Room</h1>
+          <p class="text-muted mt-1" id="lobby-status-text">Waiting for admin to start the draft…</p>
+        </div>
+        <!-- Admin only: start draft button -->
+        <button class="btn btn-gold btn-lg hidden" id="btn-start-draft">⚡ Start Draft</button>
+      </div>
+
+      <div class="lobby-grid">
+        <!-- LEFT: Participants + Captain Slots -->
+        <div>
+          <!-- Captain Assignments (Admin) -->
+          <div class="card mb-6" id="captain-panel">
+            <div class="flex items-center justify-between mb-5">
+              <h2 style="font-size:1.2rem;">👑 Captain Slots</h2>
+              <span id="captain-assigned-count" class="badge badge-neutral">0 / 0</span>
+            </div>
+            <p class="text-sm text-muted mb-4" id="captain-panel-hint">Assign captains from the participants list.</p>
+            <div class="captain-slots-list" id="captain-slots-list">
+              <!-- generated -->
+            </div>
+          </div>
+
+          <!-- Turn Order (Admin only, visible when all captains assigned) -->
+          <div class="card mb-6 hidden" id="turn-order-panel">
+            <h2 style="font-size:1.2rem;" class="mb-2">🔄 Draft Turn Order</h2>
+            <p class="text-sm text-muted mb-4">Drag to reorder, or randomize.</p>
+            <div class="flex gap-3 mb-4">
+              <button class="btn btn-ghost btn-sm" id="btn-randomize-order">🎲 Randomize</button>
+            </div>
+            <div class="turn-order-list" id="turn-order-list"><!-- generated --></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Participants + Room Info -->
+        <div>
+          <div class="card mb-4">
+            <h3 style="font-size:1rem;font-weight:600;margin-bottom:var(--s4);">📌 Room Info</h3>
+            <div class="flex flex-col gap-2 text-sm">
+              <div class="flex justify-between"><span class="text-muted">Captains</span><strong id="info-captains">—</strong></div>
+              <div class="flex justify-between"><span class="text-muted">Team Size</span><strong id="info-team-size">—</strong></div>
+              <div class="flex justify-between"><span class="text-muted">Starting Points</span><strong id="info-starting-pts">—</strong></div>
+              <div class="flex justify-between"><span class="text-muted">Bid Timer</span><strong id="info-bid-timer">—</strong></div>
+              <div class="flex justify-between"><span class="text-muted">Pool Size</span><strong id="info-pool-size">—</strong></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 style="font-size:1rem;font-weight:600;">👥 Participants</h3>
+              <span id="participant-count-badge" class="badge badge-neutral">0 connected</span>
+            </div>
+            <div class="participants-list" id="participants-list">
+              <div class="empty-state" style="padding:var(--s6)"><p class="text-dim text-sm">No one connected yet.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign Captain Modal (admin only) -->
+  <div class="modal-overlay" id="modal-assign-captain">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">👑 Assign Captain</h2>
+        <button class="modal-close" id="close-assign">✕</button>
+      </div>
+      <p class="text-muted text-sm mb-4">Select a participant to assign as Captain <strong id="assign-slot-label"></strong>.</p>
+      <div class="flex flex-col gap-2" id="assign-options-list"><!-- generated --></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancel-assign">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/lobby.js"></script>
+</body>
+</html>

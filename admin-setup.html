@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room Setup — Tournament Draft Room</title>
+  <meta name="description" content="Configure your tournament draft room settings, add players to the pool, then launch your room." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .setup-wrap { max-width: 720px; margin: 0 auto; padding: var(--s10) var(--s6); position: relative; z-index: 1; }
+    .player-list-wrap { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s3); }
+    .player-list-item { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--bg-2); border-radius: var(--r-md); border: 1px solid var(--border-dim); }
+    .player-list-item .pl-num   { width: 24px; text-align: center; font-size:.8rem; color:var(--text-4); font-weight:700; flex-shrink:0; }
+    .player-list-item .pl-info  { flex:1; }
+    .player-list-item .pl-name  { font-weight:600; font-size:.9rem; }
+    .player-list-item .pl-meta  { font-size:.75rem; color:var(--text-3); }
+    .player-list-item .pl-del   { background:transparent; border:none; color:var(--text-4); cursor:pointer; font-size:1rem; padding:4px; border-radius:4px; transition: color var(--dt-fast); flex-shrink:0; }
+    .player-list-item .pl-del:hover { color:var(--danger); }
+    .add-player-form { display:grid; grid-template-columns:1fr 160px 1fr auto; gap:var(--s3); align-items:end; }
+    .step-content { display:none; }
+    .step-content.active { display:block; animation: fadeIn .3s var(--ease-out); }
+    .review-section { background:var(--bg-2); border-radius:var(--r-md); padding:var(--s4); margin-bottom:var(--s4); }
+    .review-section h4 { font-size:.85rem; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:var(--s3); }
+    .review-kv { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border-dim); font-size:.875rem; }
+    .review-kv:last-child { border-bottom:none; }
+    .review-kv .rv-label { color:var(--text-3); }
+    .review-kv .rv-value { font-weight:600; color:var(--text-1); }
+    @media(max-width:640px){
+      .add-player-form { grid-template-columns:1fr 1fr; }
+      .add-player-form .btn { grid-column:1/-1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <div class="bg-grid"></div>
+  <div id="conn-banner"></div>
+  <div id="toast-container"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="logo">
+        <div class="logo-mark">🏆</div>
+        <span>Draft Room</span>
+      </a>
+      <span id="nav-admin-name" class="text-sm text-muted"></span>
+    </div>
+  </nav>
+
+  <div class="setup-wrap">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 style="font-size:2rem; margin-bottom:var(--s2);">Room Setup</h1>
+      <p class="text-muted">Configure your draft room in three steps.</p>
+    </div>
+
+    <!-- Steps bar -->
+    <div class="steps-bar" id="steps-bar">
+      <div class="step-item active" data-step="1">
+        <div class="step-num">1</div>
+        <span class="step-label">Room Settings</span>
+      </div>
+      <div class="step-connector" id="conn-1-2"></div>
+      <div class="step-item" data-step="2">
+        <div class="step-num">2</div>
+        <span class="step-label">Player Pool</span>
+      </div>
+      <div class="step-connector" id="conn-2-3"></div>
+      <div class="step-item" data-step="3">
+        <div class="step-num">3</div>
+        <span class="step-label">Review & Launch</span>
+      </div>
+    </div>
+
+    <!-- ========= STEP 1: Room Settings ========= -->
+    <div class="step-content active" id="step-1">
+      <div class="card">
+        <h2 class="mb-6" style="font-size:1.4rem;">⚙️ Room Settings</h2>
+        <div class="flex flex-col gap-5">
+          <div class="form-group">
+            <label class="form-label" for="inp-room-name">Room Name</label>
+            <input class="form-input" type="text" id="inp-room-name" placeholder="e.g. Season 3 Fantasy Draft" maxlength="50" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="inp-captains">Number of Captains</label>
+              <select class="form-input" id="inp-captains">
+                <option value="2">2 Captains</option>
+                <option value="3">3 Captains</option>
+                <option value="4" selected>4 Captains</option>
+                <option value="5">5 Captains</option>
+                <option value="6">6 Captains</option>
+                <option value="7">7 Captains</option>
+                <option value="8">8 Captains</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="inp-team-size">Players Per Team</label>
+              <input class="form-input" type="number" id="inp-team-size" min="1" max="30" value="5" placeholder="5" />
+              <span class="form-hint">Each captain drafts this many players.</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="inp-starting-pts">Starting Points</label>
+              <input class="form-input" type="number" id="inp-starting-pts" min="10" max="9999" value="100" />
+              <span class="form-hint">Points each captain begins with.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="inp-bid-timer">Bid Timer (seconds)</label>
+              <select class="form-input" id="inp-bid-timer">
+                <option value="30">30 seconds</option>
+                <option value="45">45 seconds</option>
+                <option value="60" selected>60 seconds</option>
+                <option value="90">90 seconds</option>
+                <option value="120">120 seconds</option>
+                <option value="180">180 seconds</option>
+              </select>
+              <span class="form-hint">Time window for other captains to bid.</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end mt-8">
+          <button class="btn btn-primary btn-lg" id="btn-step1-next">Next: Add Players →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= STEP 2: Player Pool ========= -->
+    <div class="step-content" id="step-2">
+      <div class="card">
+        <div class="flex items-center justify-between mb-6">
+          <h2 style="font-size:1.4rem;">👥 Player Pool</h2>
+          <div id="player-count-badge" class="badge badge-neutral">0 players</div>
+        </div>
+
+        <!-- Pool size hint -->
+        <div id="pool-hint" class="badge badge-gold mb-4" style="font-size:.8rem;padding:6px 14px;">
+          Recommended: <strong id="recommended-pool"></strong> players (captains × team size)
+        </div>
+
+        <!-- Tab switcher -->
+        <div class="tab-group mb-6" id="pool-tabs">
+          <button class="tab-btn active" data-tab="manual">✏️ Manual Entry</button>
+          <button class="tab-btn" data-tab="csv">📄 CSV Import</button>
+        </div>
+
+        <!-- Manual entry -->
+        <div class="tab-panel active" id="tab-manual">
+          <div class="add-player-form" id="add-player-form">
+            <div class="form-group">
+              <label class="form-label" for="inp-pname">Player Name *</label>
+              <input class="form-input" type="text" id="inp-pname" placeholder="John Doe" maxlength="40" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="inp-ppos">Position</label>
+              <input class="form-input" type="text" id="inp-ppos" placeholder="Forward" maxlength="30" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="inp-pinfo">Info / Stats</label>
+              <input class="form-input" type="text" id="inp-pinfo" placeholder="Top scorer, 22 goals" maxlength="80" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="visibility:hidden">Add</label>
+              <button class="btn btn-primary" id="btn-add-player">+ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CSV import -->
+        <div class="tab-panel" id="tab-csv">
+          <div class="drop-zone" id="csv-drop-zone">
+            <div class="drop-zone-icon">📄</div>
+            <p class="font-semibold mb-2">Drop CSV file here or click to browse</p>
+            <p class="text-sm text-muted">Columns: <code>Name, Position, Info</code> (Position & Info optional)</p>
+            <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" />
+          </div>
+          <div class="mt-4 text-sm text-muted">
+            <strong>CSV format example:</strong><br/>
+            <code style="background:var(--bg-2);padding:6px 10px;border-radius:4px;display:inline-block;margin-top:6px;line-height:1.8;">
+              Name,Position,Info<br/>
+              John Doe,Forward,22 goals last season<br/>
+              Jane Smith,Midfielder,Strong playmaker
+            </code>
+          </div>
+        </div>
+
+        <!-- Player list -->
+        <div class="divider"></div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 style="font-size:1rem; font-weight:600;">Added Players</h3>
+          <button class="btn btn-ghost btn-sm" id="btn-clear-players" style="color:var(--danger)">Clear All</button>
+        </div>
+        <div class="player-list-wrap" id="player-list">
+          <div class="empty-state" id="empty-pool-msg">
+            <div class="empty-state-icon">👤</div>
+            <p class="empty-state-text">No players added yet.</p>
+          </div>
+        </div>
+
+        <div class="flex justify-between mt-8">
+          <button class="btn btn-ghost" id="btn-step2-back">← Back</button>
+          <button class="btn btn-primary btn-lg" id="btn-step2-next">Next: Review →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= STEP 3: Review & Launch ========= -->
+    <div class="step-content" id="step-3">
+      <div class="card">
+        <h2 class="mb-6" style="font-size:1.4rem;">🚀 Review & Launch</h2>
+
+        <div class="review-section">
+          <h4>Room Settings</h4>
+          <div class="review-kv"><span class="rv-label">Room Name</span><span class="rv-value" id="rv-room-name">—</span></div>
+          <div class="review-kv"><span class="rv-label">Captains</span><span class="rv-value" id="rv-captains">—</span></div>
+          <div class="review-kv"><span class="rv-label">Players Per Team</span><span class="rv-value" id="rv-team-size">—</span></div>
+          <div class="review-kv"><span class="rv-label">Starting Points</span><span class="rv-value" id="rv-starting-pts">—</span></div>
+          <div class="review-kv"><span class="rv-label">Bid Timer</span><span class="rv-value" id="rv-bid-timer">—</span></div>
+        </div>
+
+        <div class="review-section">
+          <h4>Player Pool</h4>
+          <div class="review-kv"><span class="rv-label">Total Players in Pool</span><span class="rv-value" id="rv-pool-size">—</span></div>
+          <div class="review-kv"><span class="rv-label">Total Spots Needed</span><span class="rv-value" id="rv-spots-needed">—</span></div>
+          <div id="rv-pool-warning" class="badge badge-gold mt-3 hidden" style="font-size:.8rem;">⚠️ Pool has fewer players than total spots. Some captains may not fill their rosters.</div>
+        </div>
+
+        <div class="flex justify-between mt-8">
+          <button class="btn btn-ghost" id="btn-step3-back">← Back</button>
+          <button class="btn btn-gold btn-lg" id="btn-launch-room">🚀 Launch Room</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/admin-setup.js"></script>
+</body>
+</html>

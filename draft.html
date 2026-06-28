@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Draft Room — Tournament Draft Room</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    body { overflow: hidden; }
+    @media(max-width:900px){ body { overflow: auto; } }
+
+    /* Player pool grid */
+    .pool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+
+    /* Phase banner */
+    .phase-banner {
+      padding: 8px 16px; border-radius: var(--r-full);
+      font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .phase-banner.pick    { background:var(--primary-glow);  color:var(--primary-light); border:1px solid rgba(99,102,241,.3); }
+    .phase-banner.bidding { background:var(--gold-glow);     color:var(--gold-light);    border:1px solid rgba(245,158,11,.3); }
+    .phase-banner.reveal  { background:var(--success-glow);  color:var(--success);       border:1px solid rgba(16,185,129,.3); }
+    .phase-banner.done    { background:rgba(148,163,184,.1); color:var(--text-3);        border:1px solid rgba(148,163,184,.2); }
+
+    /* Your turn highlight */
+    .your-turn-banner {
+      background: linear-gradient(135deg, rgba(245,158,11,.15), rgba(245,158,11,.05));
+      border: 2px solid var(--gold); border-radius: var(--r-lg); padding: var(--s4);
+      text-align: center; animation: bounceIn .4s var(--ease-bounce);
+      box-shadow: 0 0 24px var(--gold-glow);
+    }
+
+    /* Bid confirm modal */
+    .bid-confirm-player { font-family:'Rajdhani',sans-serif; font-size:1.6rem; font-weight:700; }
+
+    /* Team item in sidebar */
+    .sidebar-team-slot { font-size:.75rem; padding:3px 8px; background:var(--bg-2); border-radius:4px; color:var(--text-3); display:flex; justify-content:space-between; }
+    .sidebar-team-slot.filled { color:var(--text-2); }
+    .sidebar-team-slot .st-pts { color:var(--gold-light); font-weight:700; font-family:'Rajdhani',sans-serif; }
+
+    /* Pass confirm */
+    #pass-confirm-area { background:var(--bg-2); border-radius:var(--r-md); padding:var(--s4); margin-top:var(--s4); display:none; }
+
+    /* Paused overlay on timer */
+    .paused-msg { font-size:.75rem; color:var(--gold-light); animation:pulse 1.5s infinite; }
+
+    @media(max-width:900px){
+      .draft-layout { grid-template-columns:1fr; height:auto; }
+      .d-panel { max-height:60vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <div class="bg-grid"></div>
+  <div id="conn-banner"></div>
+  <div id="toast-container"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-inner" style="max-width:100%;padding:0 var(--s4);">
+      <div class="logo" style="gap:var(--s2);">
+        <div class="logo-mark">🏆</div>
+        <span id="nav-room-name" class="truncate" style="max-width:200px;">Draft Room</span>
+      </div>
+      <div class="nav-info" style="gap:var(--s3);">
+        <div class="phase-banner pick" id="phase-banner">⚙️ Loading…</div>
+        <div class="points-chip" id="my-points-chip" style="display:none">
+          <span>⭐</span><span id="my-points-val">100</span><span class="text-xs" style="color:var(--gold-dark);"> pts</span>
+        </div>
+        <span id="nav-my-badge" class="badge badge-neutral"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== DRAFT LAYOUT ===================== -->
+  <div class="draft-layout">
+
+    <!-- LEFT: Player Pool -->
+    <div class="d-panel" id="pool-panel">
+      <div class="d-panel-title">
+        <span>🎯 Player Pool</span>
+        <span id="pool-count-badge" class="badge badge-neutral">0 left</span>
+      </div>
+      <input class="form-input" type="text" id="pool-search" placeholder="🔍 Search players…" style="font-size:.8rem;padding:8px 12px;" />
+      <div class="pool-grid" id="pool-grid">
+        <div class="empty-state" style="grid-column:1/-1;padding:var(--s8);">
+          <div class="spinner spinner-sm" style="margin:0 auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Bid Stage + Log -->
+    <div class="d-panel" id="center-panel">
+      <!-- Bid Stage -->
+      <div class="bid-stage phase-pick" id="bid-stage">
+        <!-- Content rendered by JS based on phase -->
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Draft Log -->
+      <div class="card" style="flex:1;min-height:180px;display:flex;flex-direction:column;">
+        <div class="d-panel-title mb-3">
+          <span>📜 Draft Log</span>
+          <span id="round-badge" class="badge badge-neutral">Round 1</span>
+        </div>
+        <div class="draft-log" id="draft-log" style="flex:1;">
+          <div class="empty-state" style="padding:var(--s6)">
+            <p class="text-dim text-sm">Draft events will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Captains Sidebar -->
+    <div class="d-panel" id="side-panel">
+      <div class="d-panel-title">
+        <span>👑 Captains</span>
+      </div>
+      <div id="captains-sidebar">
+        <div class="spinner spinner-sm" style="margin:8px auto;display:block;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== BID CONFIRM MODAL ===================== -->
+  <div class="modal-overlay" id="modal-bid-confirm">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header">
+        <h2 class="modal-title">⭐ Place Your Bid</h2>
+        <button class="modal-close" id="close-bid-confirm">✕</button>
+      </div>
+      <div class="text-center mb-5">
+        <div class="text-muted text-xs mb-1">Nominating</div>
+        <div class="bid-confirm-player" id="bid-confirm-player-name">—</div>
+        <div class="text-muted text-sm" id="bid-confirm-player-pos"></div>
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label" for="bid-amount-input">Your Bid (points)</label>
+        <div class="bid-input-group">
+          <div class="bid-input-prefix">⭐</div>
+          <input class="bid-input-field" type="number" id="bid-amount-input" min="1" placeholder="Min. 1 pt" />
+        </div>
+        <div class="flex justify-between mt-2">
+          <span class="form-hint">Min: 1 pt · Max: <span id="bid-max-display">—</span> pts</span>
+          <span class="form-hint">Balance: <strong id="bid-balance-display" class="text-gold">—</strong> pts</span>
+        </div>
+      </div>
+      <div id="bid-confirm-warning" class="badge badge-danger hidden mb-3" style="font-size:.8rem;padding:6px 12px;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancel-bid-confirm">Cancel</button>
+        <button class="btn btn-gold btn-lg" id="submit-bid-confirm">🔒 Lock In Bid</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== BID REVEAL OVERLAY ===================== -->
+  <div id="bid-reveal-overlay">
+    <div class="reveal-headline">🎲 Bids Revealed!</div>
+    <div class="reveal-player-name" id="reveal-player-name"></div>
+    <div class="reveal-cards-wrap" id="reveal-cards-wrap"></div>
+    <div class="winner-banner hidden" id="reveal-winner-banner">
+      <div class="winner-label" id="reveal-winner-name"></div>
+      <div class="winner-player" id="reveal-winner-detail"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/draft.js"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournament Draft Room — Blind Bid Draft Platform</title>
+  <meta name="description" content="Create or join a tournament draft room. Captains blind-bid on players from a shared pool. The highest bid wins!" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <div class="bg-grid"></div>
+  <div id="conn-banner"></div>
+  <div id="toast-container"></div>
+
+  <!-- ===================== HERO ===================== -->
+  <main class="hero">
+    <div>
+      <div class="hero-badge">🏆 Blind Bid Draft System</div>
+      <h1 class="hero-title gradient-text">Tournament<br/>Draft Room</h1>
+      <p class="hero-sub">Admin-controlled draft rooms where captains fight for players through secret blind bids. Pick your player, set your price, and hope it's enough.</p>
+
+      <div class="hero-actions">
+        <div class="action-card" id="btn-admin-card" role="button" tabindex="0">
+          <div class="action-card-icon">🎮</div>
+          <div class="action-card-title">Create Room</div>
+          <div class="action-card-desc">Set up your tournament, add players to the pool, and invite captains.</div>
+          <div class="mt-4">
+            <span class="badge badge-primary">Admin</span>
+          </div>
+        </div>
+        <div class="action-card" id="btn-join-card" role="button" tabindex="0">
+          <div class="action-card-icon">🚪</div>
+          <div class="action-card-title">Join Room</div>
+          <div class="action-card-desc">Enter an invite code to join as a captain or spectator in a live draft.</div>
+          <div class="mt-4">
+            <span class="badge badge-neutral">Captain / Spectator</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature pills -->
+    <div class="flex flex-wrap justify-center gap-3" style="max-width:560px">
+      <span class="badge badge-neutral">🎯 Blind Bid Auctions</span>
+      <span class="badge badge-neutral">⚡ Real-time Sync</span>
+      <span class="badge badge-neutral">⏸️ Pause on Disconnect</span>
+      <span class="badge badge-neutral">👥 Spectator Mode</span>
+      <span class="badge badge-neutral">📊 CSV Player Import</span>
+      <span class="badge badge-neutral">🏅 100 Points Per Captain</span>
+    </div>
+  </main>
+
+  <!-- ===================== CREATE MODAL ===================== -->
+  <div class="modal-overlay" id="modal-create">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🎮 Create Room</h2>
+        <button class="modal-close" id="close-create">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="input-admin-name">Your Name (Admin)</label>
+        <input class="form-input" type="text" id="input-admin-name" placeholder="e.g. Tournament Host" maxlength="30" autocomplete="off" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancel-create">Cancel</button>
+        <button class="btn btn-primary btn-lg" id="submit-create">Continue Setup →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== JOIN MODAL ===================== -->
+  <div class="modal-overlay" id="modal-join">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🚪 Join a Room</h2>
+        <button class="modal-close" id="close-join">✕</button>
+      </div>
+      <div class="flex flex-col gap-4">
+        <div class="form-group">
+          <label class="form-label" for="input-invite-code">Invite Code</label>
+          <input class="form-input" type="text" id="input-invite-code" placeholder="e.g. XK9P2M"
+            maxlength="6" style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;letter-spacing:.2em;text-transform:uppercase;" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-join-name">Your Display Name</label>
+          <input class="form-input" type="text" id="input-join-name" placeholder="e.g. Captain Falcon" maxlength="30" autocomplete="off" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancel-join">Cancel</button>
+        <button class="btn btn-primary btn-lg" id="submit-join">Join Room →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>

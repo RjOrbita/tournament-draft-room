@@ -1,0 +1,52 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        // Any authenticated user can read room data
+        ".read": "auth != null",
+
+        "meta": {
+          // Only admin can write meta (creation + status updates)
+          ".write": "auth != null && (
+            !data.exists() ||
+            data.child('adminId').val() === auth.uid
+          )"
+        },
+
+        "participants": {
+          // Any auth user can create their own participant record
+          ".write": "auth != null",
+          "$userId": {
+            // Only the admin or the participant themselves can write
+            ".write": "auth != null && (
+              auth.uid === $userId ||
+              root.child('rooms').child($roomId).child('meta/adminId').val() === auth.uid
+            )"
+          }
+        },
+
+        "playerPool": {
+          // Only admin can create/modify player pool
+          ".write": "auth != null && root.child('rooms').child($roomId).child('meta/adminId').val() === auth.uid"
+        },
+
+        "draft": {
+          // Any captain or admin can write to draft (game state transitions)
+          ".write": "auth != null"
+        },
+
+        "log": {
+          // Any authenticated user can append log entries
+          ".write": "auth != null"
+        },
+
+        "presence": {
+          // Each user manages their own presence
+          "$userId": {
+            ".write": "auth != null && auth.uid === $userId"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Firebase config with real credentials — DO NOT COMMIT
+js/firebase-init.js
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor folders
+.vscode/
+.idea/
+
+# Diagnostic tool (dev only)
+diagnostic.html
+
+# Logs
+*.log
