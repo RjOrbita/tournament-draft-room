@@ -61,6 +61,16 @@ onReady(async () => {
     myBadge.textContent = myRole === 'admin' ? '👑 Admin' : myRole === 'captain' ? '⚔️ You' : '👁 Watch';
     myBadge.className   = myRole === 'captain' ? 'badge badge-captain' : myRole === 'admin' ? 'badge badge-primary' : 'badge badge-neutral';
 
+    // Top Nav buttons
+    document.getElementById('btn-exit-room')?.addEventListener('click', exitRoom);
+    if (myRole === 'admin') {
+      const resetBtn = document.getElementById('btn-reset-draft');
+      if (resetBtn) {
+        resetBtn.style.display = 'inline-flex';
+        resetBtn.addEventListener('click', resetDraft);
+      }
+    }
+
     // Show my points chip (captain only)
     if (myRole === 'captain') {
       document.getElementById('my-points-chip').style.display = 'inline-flex';
@@ -96,8 +106,11 @@ onReady(async () => {
 // ============================================================
 function listenToRoomMeta() {
   db.ref(`rooms/${roomId}/meta/status`).on('value', snap => {
-    if (snap.val() === 'completed') {
+    const status = snap.val();
+    if (status === 'completed') {
       setTimeout(() => { window.location.href = `results.html?room=${roomId}`; }, 2000);
+    } else if (status === 'lobby') {
+      window.location.href = `lobby.html?room=${roomId}`;
     }
   });
 }
@@ -980,5 +993,51 @@ async function resolveRound(winnerId, winAmount, playerId) {
     console.error('resolveRound error:', err);
   } finally {
     isResolving = false;
+  }
+}
+// ============================================================
+//  ACTIONS
+// ============================================================
+async function exitRoom() {
+  if (!confirm('Are you sure you want to leave this room?')) return;
+  try {
+    if (myId) await db.ref(`rooms/${roomId}/participants/${myId}`).remove();
+    clearSession();
+    window.location.href = 'index.html';
+  } catch(e) {
+    console.error(e);
+    showToast('Failed to exit room.', 'error');
+  }
+}
+
+async function resetDraft() {
+  if (myRole !== 'admin') return;
+  if (!confirm('Are you sure you want to reset the draft? All progress will be lost and you will return to the lobby.')) return;
+  
+  try {
+    const updates = {};
+    
+    // 1. Reset room status
+    updates[`rooms/${roomId}/meta/status`] = 'lobby';
+    
+    // 2. Clear draft node
+    updates[`rooms/${roomId}/draft`] = null;
+    
+    // 3. Reset player pool status to available
+    Object.keys(playerPool).forEach(pid => {
+      updates[`rooms/${roomId}/playerPool/${pid}/status`] = 'available';
+    });
+    
+    // 4. Reset participants
+    Object.keys(participants).forEach(uid => {
+      updates[`rooms/${roomId}/participants/${uid}/team`] = null;
+      updates[`rooms/${roomId}/participants/${uid}/points`] = roomMeta.startingPoints || 100;
+    });
+    
+    await db.ref().update(updates);
+    // Listeners will redirect everyone automatically
+  } catch(e) {
+    console.error(e);
+    showToast('Failed to reset draft.', 'error');
   }
 }

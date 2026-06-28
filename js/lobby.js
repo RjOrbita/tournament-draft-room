@@ -79,6 +79,9 @@ function initUI() {
     showToast(`Copied invite code: ${roomMeta.inviteCode}`, 'success');
   });
 
+  // Exit room
+  document.getElementById('btn-exit-room')?.addEventListener('click', exitRoom);
+
   // Admin-only UI
   if (isAdmin) {
     document.getElementById('btn-start-draft').classList.remove('hidden');
@@ -388,5 +391,18 @@ function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// ---- Actions ----
+async function exitRoom() {
+  if (!confirm('Are you sure you want to leave this room?')) return;
+  try {
+    if (myId) await db.ref(`rooms/${roomId}/participants/${myId}`).remove();
+    clearSession();
+    window.location.href = 'index.html';
+  } catch(e) {
+    console.error(e);
+    showToast('Failed to exit room.', 'error');
   }
 }
