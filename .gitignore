@@ -2,8 +2,8 @@
 node_modules/
 npm-debug.log*
 
-# Firebase config with real credentials — DO NOT COMMIT
-js/firebase-init.js
+# Firebase config
+# Note: It is safe to commit Firebase web config keys as security is handled by Database Rules
 
 # OS files
 .DS_Store
